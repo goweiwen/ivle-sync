@@ -115,13 +115,12 @@ class IVLESession:
                     "target": "workbin"
                 }
 
-        r = self.s.get("https://ivle.nus.edu.sg/api/downloadfile.ashx",
-                stream=True, params=params)
-
         makedirs(os.path.dirname(file.path), exist_ok=True)
 
         if os.path.isfile(file.path):
-            print("Skipping " + file.path + ".")
+            r = self.s.get("https://ivle.nus.edu.sg/api/downloadfile.ashx",
+                    stream=True, params=params)
+            # print("Skipping " + file.path + ".")
             return
 
         print("Downloading " + file.path + ".")
