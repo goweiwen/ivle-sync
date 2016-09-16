@@ -10,9 +10,6 @@ import requests
 LAPI_KEY = "2urj280s9196lPJInBDNP"
 USER_AGENT = "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/37.0.2062.120 Safari/537.36"
 
-USERID = input("UserID: ")
-PASSWORD = getpass("Password: ")
-
 class Module:
     def __init__(self, moduleId, name, code):
         self.id = moduleId
@@ -58,13 +55,15 @@ class WorkbinFile:
         self.path = path + "/" + self.name
 
 class IVLESession:
-    def __init__(self):
+    def __init__(self, userid, password):
+        self.userid = userid
+        self.password = password
         self.s = requests.Session()
         self.s.headers.update({"User-Agent": USER_AGENT})
 
-        self.token = self.get_token(USERID, PASSWORD)
+        self.token = self.get_token()
 
-    def get_token(self, userid, password):
+    def get_token(self):
         r = self.s.get("https://ivle.nus.edu.sg/api/login/?apikey=" + LAPI_KEY)
         soup = BeautifulSoup(r.content, "html.parser")
 
@@ -74,8 +73,8 @@ class IVLESession:
         data = {
                 "__VIEWSTATE": VIEWSTATE,
                 "__VIEWSTATEGENERATOR": VIEWSTATEGENERATOR,
-                "userid": USERID,
-                "password": PASSWORD
+                "userid": self.userid,
+                "password": self.password
             }
 
         r = self.s.post("https://ivle.nus.edu.sg/api/login/?apikey=" + LAPI_KEY, data)
@@ -137,8 +136,7 @@ class IVLESession:
         for file in target_folder.files:
             self.download_file(file)
 
-def sync_files():
-    session = IVLESession()
+def sync_files(session):
     modules = session.get_modules()
 
     for module in modules:
@@ -146,8 +144,7 @@ def sync_files():
         for folder in folders:
             session.download_folder(folder)
 
-def sync_announcements():
-    session = IVLESession()
+def sync_announcements(session):
     modules = session.get_modules()
 
     DURATION = 60 * 24 * 5
@@ -167,12 +164,21 @@ def sync_announcements():
             input()
 
 def main():
-    if len(argv) == 1:
-        print("Usage: " + argv[0] + " [files|announcements]")
-    elif argv[1] == "files" or argv[1] == "f":
-        sync_files()
+
+    if argv[1] == "files" or argv[1] == "f":
+        userid = input("UserID: ")
+        password = getpass("Password: ")
+        session = IVLESession(userid, password)
+        sync_files(session)
+
     elif argv[1] == "announcements" or argv[1] == "a":
-        sync_announcements()
+        userid = input("UserID: ")
+        password = getpass("Password: ")
+        session = IVLESession(userid, password)
+        sync_announcements(session)
+
+    else:
+        print("Usage: " + argv[0] + " [files|announcements]")
 
 if __name__ == "__main__":
     main()
