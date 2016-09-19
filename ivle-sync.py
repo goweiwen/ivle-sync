@@ -20,7 +20,7 @@ class WorkbinFolder:
     def __init__(self, folderJson, path=""):
         self.name = folderJson["FolderName"]
         self.id = folderJson["ID"]
-        self.path = path + "/" + self.name
+        self.path = os.path.join(path, self.name)
 
         self.folders = []
         for fileJson in folderJson["Folders"]:
@@ -117,6 +117,7 @@ class IVLESession:
 
         makedirs(os.path.dirname(file.path), exist_ok=True)
 
+        r = None
         if os.path.isfile(file.path):
             r = self.s.get("https://ivle.nus.edu.sg/api/downloadfile.ashx",
                     stream=True, params=params)
