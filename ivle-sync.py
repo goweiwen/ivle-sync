@@ -115,17 +115,16 @@ class IVLESession:
                     "target": "workbin"
                 }
 
-        r = self.s.get("https://ivle.nus.edu.sg/api/downloadfile.ashx",
-                stream=True, params=params)
-
         makedirs(os.path.dirname(file.path), exist_ok=True)
 
-        r = None
         if os.path.isfile(file.path):
-            print("Skipping " + file.path + ".")
+            # print("Skipping " + file.path + ".")
             return
 
         print("Downloading " + file.path + ".")
+        r = self.s.get("https://ivle.nus.edu.sg/api/downloadfile.ashx",
+                stream=True, params=params)
+
         with open(file.path, 'wb') as f:
             for chunk in r.iter_content(1024):
                 f.write(chunk)
@@ -166,17 +165,18 @@ def sync_announcements(session):
 
 def main():
 
-    if argv[1] == "files" or argv[1] == "f":
-        userid = input("UserID: ")
-        password = getpass("Password: ")
-        session = IVLESession(userid, password)
-        sync_files(session)
+    if len(argv) > 0:
+        if argv[1] == "files" or argv[1] == "f":
+            userid = input("UserID: ")
+            password = getpass("Password: ")
+            session = IVLESession(userid, password)
+            sync_files(session)
 
-    elif argv[1] == "announcements" or argv[1] == "a":
-        userid = input("UserID: ")
-        password = getpass("Password: ")
-        session = IVLESession(userid, password)
-        sync_announcements(session)
+        elif argv[1] == "announcements" or argv[1] == "a":
+            userid = input("UserID: ")
+            password = getpass("Password: ")
+            session = IVLESession(userid, password)
+            sync_announcements(session)
 
     else:
         print("Usage: " + argv[0] + " [files|announcements]")
