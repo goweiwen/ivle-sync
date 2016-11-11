@@ -7,7 +7,10 @@ import os.path
 import re
 import requests
 
-LAPI_KEY = "2urj280s9196lPJInBDNP"
+# Fill up ./credentials.py with your LAPI key
+# http://ivle.nus.edu.sg/LAPI/default.aspx
+from credentials import LAPI_KEY, USERID, PASSWORD
+
 USER_AGENT = "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/37.0.2062.120 Safari/537.36"
 
 class Module:
@@ -67,6 +70,7 @@ class IVLESession:
 
     def get_token(self):
         r = self.s.get("https://ivle.nus.edu.sg/api/login/?apikey=" + LAPI_KEY)
+        print(LAPI_KEY)
         soup = BeautifulSoup(r.content, "html.parser")
 
         VIEWSTATE = soup.find(id="__VIEWSTATE")['value']
@@ -173,16 +177,16 @@ def main():
 
     if len(argv) > 1:
         if argv[1] == "files" or argv[1] == "f":
-            userid = input("UserID: ")
-            password = getpass("Password: ")
+            userid = USERID if USERID != '' else input("UserID: ")
+            password = PASSWORD if PASSWORD != '' else getpass("Password: ")
             session = IVLESession(userid, password)
             if session.token != '':
                 sync_files(session)
             return
 
         elif argv[1] == "announcements" or argv[1] == "a":
-            userid = input("UserID: ")
-            password = getpass("Password: ")
+            userid = USERID if USERID != '' else input("UserID: ")
+            password = PASSWORD if PASSWORD != '' else getpass("Password: ")
             session = IVLESession(userid, password)
             if session.token != '':
                 sync_announcements(session)
