@@ -62,6 +62,8 @@ class IVLESession:
         self.s.headers.update({"User-Agent": USER_AGENT})
 
         self.token = self.get_token()
+        if self.token == '':
+            print("Login fail, please check your userid and password")
 
     def get_token(self):
         r = self.s.get("https://ivle.nus.edu.sg/api/login/?apikey=" + LAPI_KEY)
@@ -78,6 +80,10 @@ class IVLESession:
             }
 
         r = self.s.post("https://ivle.nus.edu.sg/api/login/?apikey=" + LAPI_KEY, data)
+
+        if len(r.text) > 1000: # hacky way to check if return is a HTML page
+            return ''
+
         return r.text
 
     def get_modules(self):
@@ -165,21 +171,24 @@ def sync_announcements(session):
 
 def main():
 
-    if len(argv) > 0:
+    if len(argv) > 1:
         if argv[1] == "files" or argv[1] == "f":
             userid = input("UserID: ")
             password = getpass("Password: ")
             session = IVLESession(userid, password)
-            sync_files(session)
+            if session.token != '':
+                sync_files(session)
+            return
 
         elif argv[1] == "announcements" or argv[1] == "a":
             userid = input("UserID: ")
             password = getpass("Password: ")
             session = IVLESession(userid, password)
-            sync_announcements(session)
+            if session.token != '':
+                sync_announcements(session)
+            return
 
-    else:
-        print("Usage: " + argv[0] + " [files|announcements]")
+    print("Usage: " + argv[0] + " [files|announcements]")
 
 if __name__ == "__main__":
     main()
