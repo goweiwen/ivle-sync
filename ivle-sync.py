@@ -70,7 +70,6 @@ class IVLESession:
 
     def get_token(self):
         r = self.s.get("https://ivle.nus.edu.sg/api/login/?apikey=" + LAPI_KEY)
-        print(LAPI_KEY)
         soup = BeautifulSoup(r.content, "html.parser")
 
         VIEWSTATE = soup.find(id="__VIEWSTATE")['value']
