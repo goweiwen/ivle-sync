@@ -4,6 +4,7 @@ from getpass import getpass
 from os import makedirs
 from sys import argv
 import os.path
+import os
 import re
 import requests
 
@@ -134,9 +135,12 @@ class IVLESession:
         r = self.s.get("https://ivle.nus.edu.sg/api/downloadfile.ashx",
                 stream=True, params=params)
 
-        with open(file.path, 'wb') as f:
-            for chunk in r.iter_content(1024):
-                f.write(chunk)
+        try:
+            with open(file.path, 'wb') as f:
+                for chunk in r.iter_content(1024):
+                    f.write(chunk)
+        except:
+            os.remove(file.path)
 
     def download_folder(self, target_folder):
         for folder in target_folder.folders:
@@ -174,22 +178,26 @@ def sync_announcements(session):
 
 def main():
 
-    if len(argv) > 1:
-        if argv[1] == "files" or argv[1] == "f":
-            userid = USERID if USERID != '' else input("UserID: ")
-            password = PASSWORD if PASSWORD != '' else getpass("Password: ")
-            session = IVLESession(userid, password)
-            if session.token != '':
-                sync_files(session)
-            return
+    try:
+        if len(argv) > 1:
+            if argv[1] == "files" or argv[1] == "f":
+                userid = USERID if USERID != '' else input("UserID: ")
+                password = PASSWORD if PASSWORD != '' else getpass("Password: ")
+                session = IVLESession(userid, password)
+                if session.token != '':
+                    sync_files(session)
+                return
 
-        elif argv[1] == "announcements" or argv[1] == "a":
-            userid = USERID if USERID != '' else input("UserID: ")
-            password = PASSWORD if PASSWORD != '' else getpass("Password: ")
-            session = IVLESession(userid, password)
-            if session.token != '':
-                sync_announcements(session)
-            return
+            elif argv[1] == "announcements" or argv[1] == "a":
+                userid = USERID if USERID != '' else input("UserID: ")
+                password = PASSWORD if PASSWORD != '' else getpass("Password: ")
+                session = IVLESession(userid, password)
+                if session.token != '':
+                    sync_announcements(session)
+                return
+    except (KeyboardInterrupt, SystemExit):
+        print("Aborting...")
+        return
 
     print("Usage: " + argv[0] + " [files|announcements]")
 
