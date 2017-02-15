@@ -2,9 +2,8 @@
 from bs4 import BeautifulSoup
 from getpass import getpass
 from os import makedirs
-from sys import argv
-import os.path
-import os
+from sys import argv, exit
+from os.path import join, dirname, isfile
 import re
 import requests
 
@@ -24,7 +23,7 @@ class WorkbinFolder:
     def __init__(self, folderJson, path=""):
         self.name = folderJson["FolderName"]
         self.id = folderJson["ID"]
-        self.path = os.path.join(path, self.name)
+        self.path = join(path, self.name)
 
         self.folders = []
         for fileJson in folderJson["Folders"]:
@@ -56,7 +55,7 @@ class WorkbinFile:
     def __init__(self, fileJson, path=""):
         self.name = fileJson["FileName"]
         self.id = fileJson["ID"]
-        self.path = path + "/" + self.name
+        self.path = join(path, self.name)
 
 class IVLESession:
     def __init__(self, userid, password):
@@ -125,9 +124,9 @@ class IVLESession:
                     "target": "workbin"
                 }
 
-        makedirs(os.path.dirname(file.path), exist_ok=True)
+        makedirs(dirname(file.path), exist_ok=True)
 
-        if os.path.isfile(file.path):
+        if isfile(file.path):
             # print("Skipping " + file.path + ".")
             return
 
@@ -186,18 +185,21 @@ def main():
                 session = IVLESession(userid, password)
                 if session.token != '':
                     sync_files(session)
-                return
-
             elif argv[1] == "announcements" or argv[1] == "a":
                 userid = USERID if USERID != '' else input("UserID: ")
                 password = PASSWORD if PASSWORD != '' else getpass("Password: ")
                 session = IVLESession(userid, password)
                 if session.token != '':
                     sync_announcements(session)
-                return
+            exit(1)
+
+    except (requests.exceptions.RequestException):
+        print("Error: Connection refused.")
+        exit(-1)
+
     except (KeyboardInterrupt, SystemExit):
         print("Aborting...")
-        return
+        exit(-1)
 
     print("Usage: " + argv[0] + " [files|announcements]")
 
