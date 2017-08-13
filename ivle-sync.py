@@ -3,13 +3,15 @@ from bs4 import BeautifulSoup
 from getpass import getpass
 from os import makedirs
 from sys import argv, exit
-from os.path import join, dirname, isfile
+from os.path import join, dirname, isfile, realpath
 import re
 import requests
+import json
 
-# Fill up ./credentials.py with your LAPI key
+# Fill up ./credentials.json with your LAPI key
 # http://ivle.nus.edu.sg/LAPI/default.aspx
-from credentials import LAPI_KEY, USERID, PASSWORD
+with open(join(dirname(realpath(__file__)), 'credentials.json'), encoding='utf-8') as file:
+    credentials = json.loads(file.read())
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/37.0.2062.120 Safari/537.36"
 
@@ -69,7 +71,7 @@ class IVLESession:
             print("Login fail, please check your userid and password")
 
     def get_token(self):
-        r = self.s.get("https://ivle.nus.edu.sg/api/login/?apikey=" + LAPI_KEY)
+        r = self.s.get("https://ivle.nus.edu.sg/api/login/?apikey=" + credentials['LAPI_KEY'])
         soup = BeautifulSoup(r.content, "html.parser")
 
         VIEWSTATE = soup.find(id="__VIEWSTATE")['value']
@@ -82,7 +84,7 @@ class IVLESession:
                 "password": self.password
             }
 
-        r = self.s.post("https://ivle.nus.edu.sg/api/login/?apikey=" + LAPI_KEY, data)
+        r = self.s.post("https://ivle.nus.edu.sg/api/login/?apikey=" + credentials['LAPI_KEY'], data)
 
         if len(r.text) > 1000: # hacky way to check if return is a HTML page
             return ''
@@ -111,14 +113,14 @@ class IVLESession:
         return folders
 
     def lapi(self, method, params={}):
-        params["APIKey"] = LAPI_KEY
+        params["APIKey"] = credentials['LAPI_KEY']
         params["AuthToken"] = self.token
         return self.s.get("https://ivle.nus.edu.sg/api/Lapi.svc/" + method,
             params=params).json()
 
     def download_file(self, file):
         params = {
-                    "APIKey": LAPI_KEY,
+                    "APIKey": credentials['LAPI_KEY'],
                     "AuthToken": self.token,
                     "ID": file.id,
                     "target": "workbin"
@@ -180,14 +182,14 @@ def main():
     try:
         if len(argv) > 1:
             if argv[1] == "files" or argv[1] == "f":
-                userid = USERID if USERID != '' else input("UserID: ")
-                password = PASSWORD if PASSWORD != '' else getpass("Password: ")
+                userid = credentials['USERID'] if credentials['USERID'] != '' else input("UserID: ")
+                password = credentials['PASSWORD'] if credentials['PASSWORD'] != '' else getpass("Password: ")
                 session = IVLESession(userid, password)
                 if session.token != '':
                     sync_files(session)
             elif argv[1] == "announcements" or argv[1] == "a":
-                userid = USERID if USERID != '' else input("UserID: ")
-                password = PASSWORD if PASSWORD != '' else getpass("Password: ")
+                userid = credentials['USERID'] if credentials['USERID'] != '' else input("UserID: ")
+                password = credentials['PASSWORD'] if credentials['PASSWORD'] != '' else getpass("Password: ")
                 session = IVLESession(userid, password)
                 if session.token != '':
                     sync_announcements(session)
