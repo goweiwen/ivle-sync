@@ -26,6 +26,13 @@ class Module:
         self.code = code.replace('/', '-')
 
 
+class Webcast:
+    def __init__(self, title, url, module):
+        self.title = title
+        self.url = url
+        self.module = module
+
+
 class WorkbinFolder:
     def __init__(self, folderJson, path=""):
         self.name = folderJson["FolderName"]
@@ -138,12 +145,39 @@ class IVLESession:
                 folders.append(WorkbinFolder(folder, module.code))
         return folders
 
+    def get_webcasts(self, module):
+        result = self.lapi("Webcasts", {"CourseID": module.id})
+
+        webcasts = []
+        for webcast in result["Results"]:
+            for itemGroup in webcast['ItemGroups']:
+                for video in itemGroup['Files']:
+                    webcasts.append(
+                        Webcast(video['FileTitle'], video['MP4'], module))
+        return webcasts
+
     def lapi(self, method, params={}):
         params["APIKey"] = credentials['LAPI_KEY']
         params["AuthToken"] = self.token
         return self.s.get(
             "https://ivle.nus.edu.sg/api/Lapi.svc/" + method,
             params=params).json()
+
+    def download_webcast(self, webcast):
+        cookies = {'.ASPXAUTH': 'a 480 characters long hash'}
+
+        print("Downloading " + webcast.title + ".")
+        r = self.s.get(webcast.url, stream=True, cookies=cookies)
+
+        if isfile(webcast.title):
+            return
+
+        try:
+            with open(webcast.title, 'wb') as f:
+                for chunk in r.iter_content(1024):
+                    f.write(chunk)
+        except:
+            os.remove(webcast.title)
 
     def download_file(self, file):
         params = {
@@ -156,7 +190,6 @@ class IVLESession:
         makedirs(dirname(file.path), exist_ok=True)
 
         if isfile(file.path):
-            # print("Skipping " + file.path + ".")
             return
 
         print("Downloading " + file.path)
@@ -213,6 +246,15 @@ def sync_announcements(session):
             print(description)
             print()
         print()
+
+
+def sync_webcasts(session):
+    modules = session.get_modules()
+
+    for module in modules:
+        webcasts = session.get_webcasts(module)
+        for webcast in webcasts:
+            session.download_webcast(webcast)
 
 
 def get_credentials():
@@ -296,6 +338,9 @@ def parse_args():
     parser_a = subparsers.add_parser(
         "announcements", aliases=['a'], help="Print out IVLE announcements")
 
+    parser_w = subparsers.add_parser(
+        "webcasts", aliases=['w'], help="Sync Panopto web lectures to the current directory")
+
     parser_l = subparsers.add_parser(
         "logout", aliases=['l'], help="Logout and clear token")
 
@@ -322,6 +367,9 @@ def main():
         elif args.action == "announcements" or args.action == "a":
             session = IVLESession()
             sync_announcements(session)
+        elif args.action == "webcasts" or args.action == "w":
+            session = IVLESession()
+            sync_webcasts(session)
         elif args.action == "logout" or args.action == "l":
             clear_token()
 
