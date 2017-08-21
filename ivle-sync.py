@@ -4,6 +4,7 @@ from getpass import getpass
 from os import makedirs, remove
 from sys import argv, exit
 from os.path import join, dirname, isfile, realpath
+from tqdm import tqdm
 import re
 import requests
 import json
@@ -169,15 +170,36 @@ class IVLESession:
         print("Downloading " + webcast.title + ".")
         r = self.s.get(webcast.url, stream=True, cookies=cookies)
 
-        if isfile(webcast.title):
+        title = webcast.title + ".mp4"
+
+        if isfile(title):
             return
 
+        done = False
         try:
-            with open(webcast.title, 'wb') as f:
-                for chunk in r.iter_content(1024):
+            total = int(r.headers.get('Content-Length', 0)) // (1024)
+            with open(title, 'wb') as f:
+                for chunk in tqdm(
+                        r.iter_content(1024),
+                        total=total,
+                        miniters=1,
+                        bar_format="{desc}{"
+                        "percentage:3.0f}%"
+                        " {rate_fmt}"
+                        " Elapsed: {"
+                        "elapsed}"
+                        " Remaining: {"
+                        "remaining}",
+                        unit='kB',
+                        unit_divisor=1024,
+                        unit_scale=True):
                     f.write(chunk)
-        except:
-            os.remove(webcast.title)
+            done = True
+        except Exception:
+            pass
+        finally:
+            if not done:
+                remove(title)
 
     def download_file(self, file):
         params = {
@@ -198,12 +220,31 @@ class IVLESession:
             stream=True,
             params=params)
 
+        done = False
         try:
+            total = int(r.headers.get('Content-Length', 0)) // (1024)
             with open(file.path, 'wb') as f:
-                for chunk in r.iter_content(1024):
+                for chunk in tqdm(
+                        r.iter_content(1024),
+                        total=total,
+                        miniters=1,
+                        bar_format="{desc}{"
+                        "percentage:3.0f}%"
+                        " {rate_fmt}"
+                        " Elapsed: {"
+                        "elapsed}"
+                        " Remaining: {"
+                        "remaining}",
+                        unit='kB',
+                        unit_divisor=1024,
+                        unit_scale=True):
                     f.write(chunk)
-        except:
-            remove(file.path)
+            done = True
+        except Exception:
+            pass
+        finally:
+            if not done:
+                remove(file.path)
 
     def download_folder(self, target_folder):
         for folder in target_folder.folders:
