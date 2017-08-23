@@ -145,20 +145,27 @@ class IVLESession:
             params=params).json()
 
     def download_webcast(self, webcast):
-        cookies = {'.ASPXAUTH': 'a 480 characters long hash'}
+        # This link redirects to IVLE, prompting for login
+        # "https://fac.weblecture.nus.edu.sg/Panopto/Pages/Auth/Login.aspx?ReturnUrl=https%3A%2F%2Ffac.weblecture.nus.edu.sg%2FPanopto%2FPages%2FHome.aspx&instance=nus&AllowBounce=true"
 
-        print("Downloading " + webcast.title + ".")
+        cookies = {
+            '.ASPXAUTH': ''
+        }
+
+        print("Downloading " + webcast.module.code + "/" + webcast.title + ".")
         r = self.s.get(webcast.url, stream=True, cookies=cookies)
 
-        title = webcast.title + ".mp4"
+        path = join(webcast.module.code, "Webcasts", webcast.title + ".mp4")
 
-        if isfile(title):
+        makedirs(dirname(path), exist_ok=True)
+
+        if isfile(path):
             return
 
         done = False
         try:
             total = int(r.headers.get('Content-Length', 0)) // (1024)
-            with open(title, 'wb') as f:
+            with open(path, 'wb') as f:
                 for chunk in tqdm(
                         r.iter_content(1024),
                         total=total,
