@@ -1,12 +1,13 @@
 #! /usr/bin/env python3
 from bs4 import BeautifulSoup
 from getpass import getpass
-from os import makedirs
-from sys import argv, exit
+from os import makedirs, remove
 from os.path import join, dirname, isfile, realpath
+from sys import argv, exit
+from tqdm import tqdm
+import json
 import re
 import requests
-import json
 
 # Fill up ./credentials.json with your LAPI key
 # http://ivle.nus.edu.sg/LAPI/default.aspx
@@ -23,6 +24,13 @@ class Module:
         self.id = moduleId
         self.name = name
         self.code = code
+
+
+class Webcast:
+    def __init__(self, title, url, module):
+        self.title = title
+        self.url = url
+        self.module = module
 
 
 class WorkbinFolder:
@@ -118,12 +126,67 @@ class IVLESession:
                 folders.append(WorkbinFolder(folder, module.code))
         return folders
 
+    def get_webcasts(self, module):
+        result = self.lapi("Webcasts", {"CourseID": module.id})
+
+        webcasts = []
+        for webcast in result["Results"]:
+            for itemGroup in webcast['ItemGroups']:
+                for video in itemGroup['Files']:
+                    webcasts.append(
+                        Webcast(video['FileTitle'], video['MP4'], module))
+        return webcasts
+
     def lapi(self, method, params={}):
         params["APIKey"] = credentials['LAPI_KEY']
         params["AuthToken"] = self.token
         return self.s.get(
             "https://ivle.nus.edu.sg/api/Lapi.svc/" + method,
             params=params).json()
+
+    def download_webcast(self, webcast):
+        # This link redirects to IVLE, prompting for login
+        # "https://fac.weblecture.nus.edu.sg/Panopto/Pages/Auth/Login.aspx?ReturnUrl=https%3A%2F%2Ffac.weblecture.nus.edu.sg%2FPanopto%2FPages%2FHome.aspx&instance=nus&AllowBounce=true"
+
+        cookies = {
+            '.ASPXAUTH': ''
+        }
+
+        print("Downloading " + webcast.module.code + "/" + webcast.title + ".")
+        r = self.s.get(webcast.url, stream=True, cookies=cookies)
+
+        path = join(webcast.module.code, "Webcasts", webcast.title + ".mp4")
+
+        makedirs(dirname(path), exist_ok=True)
+
+        if isfile(path):
+            return
+
+        done = False
+        try:
+            total = int(r.headers.get('Content-Length', 0)) // (1024)
+            with open(path, 'wb') as f:
+                for chunk in tqdm(
+                        r.iter_content(1024),
+                        total=total,
+                        miniters=1,
+                        bar_format="{desc}{"
+                        "percentage:3.0f}%"
+                        " {rate_fmt}"
+                        " Elapsed: {"
+                        "elapsed}"
+                        " Remaining: {"
+                        "remaining}",
+                        unit='kB',
+                        unit_divisor=1024,
+                        unit_scale=True):
+                    f.write(chunk)
+            done = True
+        except Exception:
+            pass
+        finally:
+            if not done:
+                remove(title)
 
     def download_file(self, file):
         params = {
@@ -136,7 +199,6 @@ class IVLESession:
         makedirs(dirname(file.path), exist_ok=True)
 
         if isfile(file.path):
-            # print("Skipping " + file.path + ".")
             return
 
         print("Downloading " + file.path + ".")
@@ -145,12 +207,31 @@ class IVLESession:
             stream=True,
             params=params)
 
+        done = False
         try:
+            total = int(r.headers.get('Content-Length', 0)) // (1024)
             with open(file.path, 'wb') as f:
-                for chunk in r.iter_content(1024):
+                for chunk in tqdm(
+                        r.iter_content(1024),
+                        total=total,
+                        miniters=1,
+                        bar_format="{desc}{"
+                        "percentage:3.0f}%"
+                        " {rate_fmt}"
+                        " Elapsed: {"
+                        "elapsed}"
+                        " Remaining: {"
+                        "remaining}",
+                        unit='kB',
+                        unit_divisor=1024,
+                        unit_scale=True):
                     f.write(chunk)
-        except:
-            os.remove(file.path)
+            done = True
+        except Exception:
+            pass
+        finally:
+            if not done:
+                remove(file.path)
 
     def download_folder(self, target_folder):
         for folder in target_folder.folders:
@@ -188,6 +269,15 @@ def sync_announcements(session):
             input()
 
 
+def sync_webcasts(session):
+    modules = session.get_modules()
+
+    for module in modules:
+        webcasts = session.get_webcasts(module)
+        for webcast in webcasts:
+            session.download_webcast(webcast)
+
+
 def get_credentials():
     userid = credentials['USERID']
     if userid == '':
@@ -219,6 +309,11 @@ def main():
                 session = IVLESession(userid, password)
                 if session.token != '':
                     sync_announcements(session)
+            elif argv[1] == "webcasts" or argv[1] == "w":
+                userid, password = get_credentials()
+                session = IVLESession(userid, password)
+                if session.token != '':
+                    sync_webcasts(session)
             exit(1)
 
     except (requests.exceptions.RequestException):
