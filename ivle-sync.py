@@ -183,9 +183,11 @@ def sync_files(session):
     modules = session.get_modules()
 
     for module in modules:
+        print(module.code + ": " + module.name)
         folders = session.get_workbin(module)
         for folder in folders:
             session.download_folder(folder)
+        print()
 
 
 def sync_announcements(session):
@@ -194,6 +196,7 @@ def sync_announcements(session):
     DURATION = 60 * 24 * 5
 
     for module in modules:
+        print(module.code + ": " + module.name)
         announcements = session.lapi(
             "Announcements", {"CourseID": module.id,
                               "Duration": DURATION})
@@ -204,7 +207,7 @@ def sync_announcements(session):
                                         "html.parser").get_text()
             description = re.sub(r'\n\s*\n', '\n', description)
             print(description)
-            input()
+        print()
 
 
 def get_credentials():
