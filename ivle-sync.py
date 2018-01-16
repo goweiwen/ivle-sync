@@ -124,8 +124,8 @@ class IVLESession:
         modules = []
         for module in result["Results"]:
             modules.append(
-                Module(module["ID"], module["CourseName"],
-                       module["CourseCode"]))
+                Module(module["ID"], module["CourseName"], module[
+                    "CourseCode"]))
         return modules
 
     def get_workbin(self, module):
@@ -194,10 +194,9 @@ def sync_announcements(session):
     DURATION = 60 * 24 * 5
 
     for module in modules:
-        announcements = session.lapi("Announcements", {
-            "CourseID": module.id,
-            "Duration": DURATION
-        })
+        announcements = session.lapi(
+            "Announcements", {"CourseID": module.id,
+                              "Duration": DURATION})
         for announcement in announcements["Results"]:
             print("\n\n\n")
             print("=== " + announcement["Title"] + " ===")
@@ -297,9 +296,13 @@ def main():
         print("Error: Connection refused.")
         exit(-1)
 
-    except (KeyboardInterrupt, SystemExit):
+    except (KeyboardInterrupt):
         print("Aborting...")
         exit(-1)
+
+    except (SystemExit):
+        print("Finished!")
+        exit(0)
 
     print("Usage: " + argv[0] + " [files|announcements|logout]")
 
