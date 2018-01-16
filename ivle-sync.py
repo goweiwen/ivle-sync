@@ -66,9 +66,7 @@ class WorkbinFile:
 
 
 class IVLESession:
-    def __init__(self, userid, password):
-        self.userid = userid
-        self.password = password
+    def __init__(self):
         self.s = requests.Session()
         self.s.headers.update({"User-Agent": USER_AGENT})
 
@@ -77,27 +75,41 @@ class IVLESession:
             print("Login fail, please check your userid and password")
 
     def get_token(self):
-        r = self.s.get("https://ivle.nus.edu.sg/api/login/?apikey=" +
-                       credentials['LAPI_KEY'])
-        soup = BeautifulSoup(r.content, "html.parser")
+        try:
+            return credentials['TOKEN']
 
-        VIEWSTATE = soup.find(id="__VIEWSTATE")['value']
-        VIEWSTATEGENERATOR = soup.find(id="__VIEWSTATEGENERATOR")['value']
+        except KeyError:
+            r = self.s.get("https://ivle.nus.edu.sg/api/login/?apikey=" +
+                           credentials['LAPI_KEY'])
+            soup = BeautifulSoup(r.content, "html.parser")
 
-        data = {
-            "__VIEWSTATE": VIEWSTATE,
-            "__VIEWSTATEGENERATOR": VIEWSTATEGENERATOR,
-            "userid": self.userid,
-            "password": self.password
-        }
+            VIEWSTATE = soup.find(id="__VIEWSTATE")['value']
+            VIEWSTATEGENERATOR = soup.find(id="__VIEWSTATEGENERATOR")['value']
 
-        r = self.s.post("https://ivle.nus.edu.sg/api/login/?apikey=" +
-                        credentials['LAPI_KEY'], data)
+            userid, password = get_credentials()
 
-        if len(r.text) > 1000:  # hacky way to check if return is a HTML page
-            return ''
+            data = {
+                "__VIEWSTATE": VIEWSTATE,
+                "__VIEWSTATEGENERATOR": VIEWSTATEGENERATOR,
+                "userid": userid,
+                "password": password
+            }
 
-        return r.text
+            r = self.s.post("https://ivle.nus.edu.sg/api/login/?apikey=" +
+                            credentials['LAPI_KEY'], data)
+
+            if len(r.text) > 1000:  # hacky way to check if return is a HTML page
+                return ''
+
+            credentials['TOKEN'] = r.text
+
+            with open(
+                    join(dirname(realpath(__file__)), 'credentials.json'),
+                    'w',
+                    encoding='utf-8') as file:
+                json.dump(credentials, file)
+
+            return r.text
 
     def get_modules(self):
         result = self.lapi("Modules")
@@ -189,13 +201,9 @@ def sync_announcements(session):
 
 
 def get_credentials():
-    userid = credentials['USERID']
-    if userid == '':
-        userid = input("UserID: ")
+    userid = input("UserID: ")
 
-    password = credentials['PASSWORD']
-    if password == '':
-        password = getpass("Password: ")
+    password = getpass("Password: ")
 
     return (userid, password)
 
@@ -210,13 +218,11 @@ def main():
     try:
         if len(argv) > 1:
             if argv[1] == "files" or argv[1] == "f":
-                userid, password = get_credentials()
-                session = IVLESession(userid, password)
+                session = IVLESession()
                 if session.token != '':
                     sync_files(session)
             elif argv[1] == "announcements" or argv[1] == "a":
-                userid, password = get_credentials()
-                session = IVLESession(userid, password)
+                session = IVLESession()
                 if session.token != '':
                     sync_announcements(session)
             exit(1)
