@@ -66,9 +66,7 @@ class WorkbinFile:
 
 
 class IVLESession:
-    def __init__(self, userid, password):
-        self.userid = userid
-        self.password = password
+    def __init__(self):
         self.s = requests.Session()
         self.s.headers.update({"User-Agent": USER_AGENT})
 
@@ -77,6 +75,22 @@ class IVLESession:
             print("Login fail, please check your userid and password")
 
     def get_token(self):
+        try:
+            self.token = ""
+            r = self.lapi("Validate", {"Token": credentials['TOKEN']})
+            if not r['Success']:
+                clear_token()
+                return self.get_new_token()
+
+            if r['Token'] != credentials['TOKEN']:
+                credentials['TOKEN'] = r['Token']
+                write_credentials()
+            return r['Token']
+
+        except KeyError:
+            return self.get_new_token()
+
+    def get_new_token(self):
         r = self.s.get("https://ivle.nus.edu.sg/api/login/?apikey=" +
                        credentials['LAPI_KEY'])
         soup = BeautifulSoup(r.content, "html.parser")
@@ -84,11 +98,13 @@ class IVLESession:
         VIEWSTATE = soup.find(id="__VIEWSTATE")['value']
         VIEWSTATEGENERATOR = soup.find(id="__VIEWSTATEGENERATOR")['value']
 
+        userid, password = get_credentials()
+
         data = {
             "__VIEWSTATE": VIEWSTATE,
             "__VIEWSTATEGENERATOR": VIEWSTATEGENERATOR,
-            "userid": self.userid,
-            "password": self.password
+            "userid": userid,
+            "password": password
         }
 
         r = self.s.post("https://ivle.nus.edu.sg/api/login/?apikey=" +
@@ -96,6 +112,9 @@ class IVLESession:
 
         if len(r.text) > 1000:  # hacky way to check if return is a HTML page
             return ''
+
+        credentials['TOKEN'] = r.text
+        write_credentials()
 
         return r.text
 
@@ -105,8 +124,8 @@ class IVLESession:
         modules = []
         for module in result["Results"]:
             modules.append(
-                Module(module["ID"], module["CourseName"], module[
-                    "CourseCode"]))
+                Module(module["ID"], module["CourseName"],
+                       module["CourseCode"]))
         return modules
 
     def get_workbin(self, module):
@@ -175,9 +194,10 @@ def sync_announcements(session):
     DURATION = 60 * 24 * 5
 
     for module in modules:
-        announcements = session.lapi(
-            "Announcements", {"CourseID": module.id,
-                              "Duration": DURATION})
+        announcements = session.lapi("Announcements", {
+            "CourseID": module.id,
+            "Duration": DURATION
+        })
         for announcement in announcements["Results"]:
             print("\n\n\n")
             print("=== " + announcement["Title"] + " ===")
@@ -197,28 +217,80 @@ def get_credentials():
     if password == '':
         password = getpass("Password: ")
 
+    if ask_whether_write_credentials():
+        credentials['USERID'] = userid
+        credentials['PASSWORD'] = password
+        write_credentials()
+
     return (userid, password)
+
+
+def get_lapi_key():
+    print(
+        "Generate your LAPI key from http://ivle.nus.edu.sg/LAPI/default.aspx")
+    while True:
+        lapi_key = input("LAPI key:")
+        if lapi_key != '':
+            return lapi_key
+
+
+def clear_token():
+    try:
+        del credentials['TOKEN']
+        write_credentials()
+        print("Token cleared.")
+    except:
+        print("No token is set.")
+        exit(-1)
+
+
+def write_credentials():
+    try:
+        with open(
+                join(dirname(realpath(__file__)), 'credentials.json'),
+                'w',
+                encoding='utf-8') as file:
+            json.dump(credentials, file)
+
+    except:
+        print("Error writing to credentials.json")
+        exit(-1)
+
+
+def ask_whether_write_credentials():
+    yes = set(['yes', 'y'])
+    no = set(['no', 'n', ''])
+
+    while True:
+        choice = input(
+            "Do you want to write the token obtained to credentials.json?[y/N] "
+        ).lower()
+        if choice in yes:
+            return True
+        elif choice in no:
+            return False
+        else:
+            print("Please respond with 'yes' or 'no'")
 
 
 def main():
 
     if credentials['LAPI_KEY'] == '':
-        print("Fill up ./credentials.json with your LAPI key")
-        print("http://ivle.nus.edu.sg/LAPI/default.aspx")
-        exit(1)
+        credentials['LAPI_KEY'] = get_lapi_key()
+        write_credentials()
 
     try:
         if len(argv) > 1:
             if argv[1] == "files" or argv[1] == "f":
-                userid, password = get_credentials()
-                session = IVLESession(userid, password)
+                session = IVLESession()
                 if session.token != '':
                     sync_files(session)
             elif argv[1] == "announcements" or argv[1] == "a":
-                userid, password = get_credentials()
-                session = IVLESession(userid, password)
+                session = IVLESession()
                 if session.token != '':
                     sync_announcements(session)
+            elif argv[1] == "logout" or argv[1] == "l":
+                clear_token()
             exit(1)
 
     except (requests.exceptions.RequestException):
@@ -229,7 +301,7 @@ def main():
         print("Aborting...")
         exit(-1)
 
-    print("Usage: " + argv[0] + " [files|announcements]")
+    print("Usage: " + argv[0] + " [files|announcements|logout]")
 
 
 if __name__ == "__main__":
