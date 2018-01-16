@@ -125,13 +125,15 @@ class IVLESession:
             "https://ivle.nus.edu.sg/api/Lapi.svc/" + method,
             params=params).json()
 
-    def download_file(self, file):
+    def download_file(self, file, base_dir):
         params = {
             "APIKey": credentials['LAPI_KEY'],
             "AuthToken": self.token,
             "ID": file.id,
             "target": "workbin"
         }
+
+        file.path = base_dir + file.path
 
         makedirs(dirname(file.path), exist_ok=True)
 
@@ -152,21 +154,21 @@ class IVLESession:
         except:
             os.remove(file.path)
 
-    def download_folder(self, target_folder):
+    def download_folder(self, target_folder, base_dir):
         for folder in target_folder.folders:
-            self.download_folder(folder)
+            self.download_folder(folder, base_dir)
 
         for file in target_folder.files:
-            self.download_file(file)
+            self.download_file(file, base_dir)
 
 
-def sync_files(session):
+def sync_files(session, base_dir):
     modules = session.get_modules()
 
     for module in modules:
         folders = session.get_workbin(module)
         for folder in folders:
-            session.download_folder(folder)
+            session.download_folder(folder, base_dir)
 
 
 def sync_announcements(session):
@@ -199,6 +201,13 @@ def get_credentials():
 
     return (userid, password)
 
+def collect(argv):
+    args = {}
+    while argv:
+        if argv[0][0] == '-':
+            args[argv[0]] = argv[1]
+        argv = argv[1:]
+    return args
 
 def main():
 
@@ -207,19 +216,37 @@ def main():
         print("http://ivle.nus.edu.sg/LAPI/default.aspx")
         exit(1)
 
+    args = collect(argv)
+    base_dir = ""
     try:
-        if len(argv) > 1:
-            if argv[1] == "files" or argv[1] == "f":
-                userid, password = get_credentials()
-                session = IVLESession(userid, password)
-                if session.token != '':
-                    sync_files(session)
-            elif argv[1] == "announcements" or argv[1] == "a":
-                userid, password = get_credentials()
-                session = IVLESession(userid, password)
-                if session.token != '':
-                    sync_announcements(session)
-            exit(1)
+        if '-d' in args:
+            base_dir = args['-d'];
+            if not base_dir.endswith('/'):
+                base_dir = base_dir + '/'
+            print("-d found, placing file in: " + base_dir + "<course code>")
+        if '-f' in args:
+            userid, password = get_credentials()
+            session = IVLESession(userid, password)
+            if session.token != '':
+                sync_files(session, base_dir)
+        if '-a' in args:
+            userid, password = get_credentials()
+            session = IVLESession(userid, password)
+            if session.token != '':
+                sync_announcements(session)
+    # try:
+    #     if len(argv) > 1:
+    #         if argv[1] == "files" or argv[1] == "f":
+    #             userid, password = get_credentials()
+    #             session = IVLESession(userid, password)
+    #             if session.token != '':
+    #                 sync_files(session)
+    #         elif argv[1] == "announcements" or argv[1] == "a":
+    #             userid, password = get_credentials()
+    #             session = IVLESession(userid, password)
+    #             if session.token != '':
+    #                 sync_announcements(session)
+    #         exit(1)
 
     except (requests.exceptions.RequestException):
         print("Error: Connection refused.")
@@ -229,7 +256,11 @@ def main():
         print("Aborting...")
         exit(-1)
 
-    print("Usage: " + argv[0] + " [files|announcements]")
+    # print("Usage: " + argv[0] + " [files|announcements]")
+    print("Usage: " + argv[0] )
+    print("  -f for files. ")
+    print("  -a for announcements. ")
+    print("  -d <directory> to output files to a different directory. ")
 
 
 if __name__ == "__main__":
