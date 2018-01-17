@@ -52,7 +52,7 @@ class WorkbinFolder:
         print("    " * indent + self.name + "/")
 
         for folder in self.folders:
-            folder.print(indent + 1)
+            folder. print(indent + 1)
 
         for file in self.files:
             print("    " * (indent + 1) + file.name)
@@ -98,7 +98,8 @@ class IVLESession:
             r = self.s.post("https://ivle.nus.edu.sg/api/login/?apikey=" +
                             credentials['LAPI_KEY'], data)
 
-            if len(r.text) > 1000:  # hacky way to check if return is a HTML page
+            if len(r.text
+                   ) > 1000:  # hacky way to check if return is a HTML page
                 return ''
 
             credentials['TOKEN'] = r.text
@@ -117,8 +118,8 @@ class IVLESession:
         modules = []
         for module in result["Results"]:
             modules.append(
-                Module(module["ID"], module["CourseName"], module[
-                    "CourseCode"]))
+                Module(module["ID"], module["CourseName"],
+                       module["CourseCode"]))
         return modules
 
     def get_workbin(self, module):
@@ -187,9 +188,10 @@ def sync_announcements(session):
     DURATION = 60 * 24 * 5
 
     for module in modules:
-        announcements = session.lapi(
-            "Announcements", {"CourseID": module.id,
-                              "Duration": DURATION})
+        announcements = session.lapi("Announcements", {
+            "CourseID": module.id,
+            "Duration": DURATION
+        })
         for announcement in announcements["Results"]:
             print("\n\n\n")
             print("=== " + announcement["Title"] + " ===")
