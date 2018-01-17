@@ -83,7 +83,8 @@ class IVLESession:
 
             if r['Token'] != credentials['TOKEN']:
                 credentials['TOKEN'] = r['Token']
-                write_credentials()
+                if yes_no():
+                    write_credentials()
             return r['Token']
 
         except KeyError:
@@ -113,7 +114,8 @@ class IVLESession:
             return ''
 
         credentials['TOKEN'] = r.text
-        write_credentials()
+        if yes_no():
+            write_credentials()
 
         return r.text
 
@@ -231,6 +233,22 @@ def write_credentials():
             'w',
             encoding='utf-8') as file:
         json.dump(credentials, file)
+
+
+def yes_no():
+    yes = set(['yes', 'y'])
+    no = set(['no', 'n'])
+
+    while True:
+        choice = input(
+            "Do you want to write the token obtained to credentials.json?[y/n] "
+        ).lower()
+        if choice in yes:
+            return True
+        elif choice in no:
+            return False
+        else:
+            print("Please respond with 'yes' or 'no'")
 
 
 def main():
