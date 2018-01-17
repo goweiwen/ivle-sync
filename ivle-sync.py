@@ -79,12 +79,15 @@ class IVLESession:
             self.token = ""
             r = self.lapi("Validate", {"Token": credentials['TOKEN']})
             if not r["Success"]:
+                print("Invalid token")
+                clear_token()
                 return self.new_token()
 
             if r['Token'] != credentials['TOKEN']:
+                print(
+                    "New token obtained -- old token is expiring in one day.")
                 credentials['TOKEN'] = r['Token']
-                if yes_no():
-                    write_credentials()
+                write_credentials()
             return r['Token']
 
         except KeyError:
@@ -228,11 +231,16 @@ def clear_token():
 
 
 def write_credentials():
-    with open(
-            join(dirname(realpath(__file__)), 'credentials.json'),
-            'w',
-            encoding='utf-8') as file:
-        json.dump(credentials, file)
+    try:
+        with open(
+                join(dirname(realpath(__file__)), 'credentials.json'),
+                'w',
+                encoding='utf-8') as file:
+            json.dump(credentials, file)
+
+    except:
+        print("Error writing to credentials.json")
+        exit(-1)
 
 
 def yes_no():
