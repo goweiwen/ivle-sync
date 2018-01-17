@@ -76,41 +76,46 @@ class IVLESession:
 
     def get_token(self):
         try:
-            return credentials['TOKEN']
-
+            self.token = ""
+            r = self.lapi("Validate", {"Token": credentials['TOKEN']})
+            if not r["Success"]:
+                return self.new_token()
+            return r["Token"]
         except KeyError:
-            r = self.s.get("https://ivle.nus.edu.sg/api/login/?apikey=" +
-                           credentials['LAPI_KEY'])
-            soup = BeautifulSoup(r.content, "html.parser")
+            return self.new_token()
 
-            VIEWSTATE = soup.find(id="__VIEWSTATE")['value']
-            VIEWSTATEGENERATOR = soup.find(id="__VIEWSTATEGENERATOR")['value']
+    def new_token(self):
+        r = self.s.get("https://ivle.nus.edu.sg/api/login/?apikey=" +
+                       credentials['LAPI_KEY'])
+        soup = BeautifulSoup(r.content, "html.parser")
 
-            userid, password = get_credentials()
+        VIEWSTATE = soup.find(id="__VIEWSTATE")['value']
+        VIEWSTATEGENERATOR = soup.find(id="__VIEWSTATEGENERATOR")['value']
 
-            data = {
-                "__VIEWSTATE": VIEWSTATE,
-                "__VIEWSTATEGENERATOR": VIEWSTATEGENERATOR,
-                "userid": userid,
-                "password": password
-            }
+        userid, password = get_credentials()
 
-            r = self.s.post("https://ivle.nus.edu.sg/api/login/?apikey=" +
-                            credentials['LAPI_KEY'], data)
+        data = {
+            "__VIEWSTATE": VIEWSTATE,
+            "__VIEWSTATEGENERATOR": VIEWSTATEGENERATOR,
+            "userid": userid,
+            "password": password
+        }
 
-            if len(r.text
-                   ) > 1000:  # hacky way to check if return is a HTML page
-                return ''
+        r = self.s.post("https://ivle.nus.edu.sg/api/login/?apikey=" +
+                        credentials['LAPI_KEY'], data)
 
-            credentials['TOKEN'] = r.text
+        if len(r.text) > 1000:  # hacky way to check if return is a HTML page
+            return ''
 
-            with open(
-                    join(dirname(realpath(__file__)), 'credentials.json'),
-                    'w',
-                    encoding='utf-8') as file:
-                json.dump(credentials, file)
+        credentials['TOKEN'] = r.text
 
-            return r.text
+        with open(
+                join(dirname(realpath(__file__)), 'credentials.json'),
+                'w',
+                encoding='utf-8') as file:
+            json.dump(credentials, file)
+
+        return r.text
 
     def get_modules(self):
         result = self.lapi("Modules")
@@ -210,6 +215,20 @@ def get_credentials():
     return (userid, password)
 
 
+def clear_token():
+    try:
+        del credentials['TOKEN']
+        with open(
+                join(dirname(realpath(__file__)), 'credentials.json'),
+                'w',
+                encoding='utf-8') as file:
+            json.dump(credentials, file)
+        print("Token cleared.")
+    except:
+        print("No token is set.")
+        exit(-1)
+
+
 def main():
 
     if credentials['LAPI_KEY'] == '':
@@ -227,6 +246,8 @@ def main():
                 session = IVLESession()
                 if session.token != '':
                     sync_announcements(session)
+            elif argv[1] == "clear-token" or argv[1] == "c":
+                clear_token()
             exit(1)
 
     except (requests.exceptions.RequestException):
@@ -237,7 +258,7 @@ def main():
         print("Aborting...")
         exit(-1)
 
-    print("Usage: " + argv[0] + " [files|announcements]")
+    print("Usage: " + argv[0] + " [files|announcements|clear-token]")
 
 
 if __name__ == "__main__":
