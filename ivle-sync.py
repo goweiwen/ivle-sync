@@ -52,7 +52,7 @@ class WorkbinFolder:
         print("    " * indent + self.name + "/")
 
         for folder in self.folders:
-            folder. print(indent + 1)
+            folder.print(indent + 1)
 
         for file in self.files:
             print("    " * (indent + 1) + file.name)
