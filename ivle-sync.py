@@ -78,22 +78,19 @@ class IVLESession:
         try:
             self.token = ""
             r = self.lapi("Validate", {"Token": credentials['TOKEN']})
-            if not r["Success"]:
-                print("Invalid token")
+            if not r['Success']:
                 clear_token()
-                return self.new_token()
+                return self.get_new_token()
 
             if r['Token'] != credentials['TOKEN']:
-                print(
-                    "New token obtained -- old token is expiring in one day.")
                 credentials['TOKEN'] = r['Token']
                 write_credentials()
             return r['Token']
 
         except KeyError:
-            return self.new_token()
+            return self.get_new_token()
 
-    def new_token(self):
+    def get_new_token(self):
         r = self.s.get("https://ivle.nus.edu.sg/api/login/?apikey=" +
                        credentials['LAPI_KEY'])
         soup = BeautifulSoup(r.content, "html.parser")
@@ -117,8 +114,7 @@ class IVLESession:
             return ''
 
         credentials['TOKEN'] = r.text
-        if yes_no():
-            write_credentials()
+        write_credentials()
 
         return r.text
 
@@ -213,11 +209,29 @@ def sync_announcements(session):
 
 
 def get_credentials():
-    userid = input("UserID: ")
+    userid = credentials['USERID']
+    if userid == '':
+        userid = input("UserID: ")
 
-    password = getpass("Password: ")
+    password = credentials['PASSWORD']
+    if password == '':
+        password = getpass("Password: ")
+
+    if ask_whether_write_credentials():
+        credentials['USERID'] = userid
+        credentials['PASSWORD'] = password
+        write_credentials()
 
     return (userid, password)
+
+
+def get_lapi_key():
+    print(
+        "Generate your LAPI key from http://ivle.nus.edu.sg/LAPI/default.aspx")
+    while True:
+        lapi_key = input("LAPI key:")
+        if lapi_key != '':
+            return lapi_key
 
 
 def clear_token():
@@ -243,13 +257,13 @@ def write_credentials():
         exit(-1)
 
 
-def yes_no():
+def ask_whether_write_credentials():
     yes = set(['yes', 'y'])
-    no = set(['no', 'n'])
+    no = set(['no', 'n', ''])
 
     while True:
         choice = input(
-            "Do you want to write the token obtained to credentials.json?[y/n] "
+            "Do you want to write the token obtained to credentials.json?[y/N] "
         ).lower()
         if choice in yes:
             return True
@@ -262,9 +276,8 @@ def yes_no():
 def main():
 
     if credentials['LAPI_KEY'] == '':
-        print("Fill up ./credentials.json with your LAPI key")
-        print("http://ivle.nus.edu.sg/LAPI/default.aspx")
-        exit(1)
+        credentials['LAPI_KEY'] = get_lapi_key()
+        write_credentials()
 
     try:
         if len(argv) > 1:
@@ -276,7 +289,7 @@ def main():
                 session = IVLESession()
                 if session.token != '':
                     sync_announcements(session)
-            elif argv[1] == "clear-token" or argv[1] == "c":
+            elif argv[1] == "logout" or argv[1] == "l":
                 clear_token()
             exit(1)
 
@@ -288,7 +301,7 @@ def main():
         print("Aborting...")
         exit(-1)
 
-    print("Usage: " + argv[0] + " [files|announcements|clear-token]")
+    print("Usage: " + argv[0] + " [files|announcements|logout]")
 
 
 if __name__ == "__main__":
