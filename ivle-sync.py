@@ -27,7 +27,7 @@ class Module:
 
 class WorkbinFolder:
     def __init__(self, folderJson, path=""):
-        self.name = folderJson["FolderName"]
+        self.name = folderJson["FolderName"].replace('/', '-')
         self.id = folderJson["ID"]
         self.path = join(path, self.name)
 
