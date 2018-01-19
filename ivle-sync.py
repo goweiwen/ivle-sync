@@ -21,13 +21,13 @@ USER_AGENT = "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko
 class Module:
     def __init__(self, moduleId, name, code):
         self.id = moduleId
-        self.name = name
+        self.name = name.replace('/', '-')
         self.code = code
 
 
 class WorkbinFolder:
     def __init__(self, folderJson, path=""):
-        self.name = folderJson["FolderName"].replace('/', '-')
+        self.name = folderJson["FolderName"]
         self.id = folderJson["ID"]
         self.path = join(path, self.name)
 
