@@ -315,6 +315,10 @@ def main():
         elif args.action == "logout" or args.action == "l":
             clear_token()
 
+        if len(argv) == 1:
+            parser.print_help()
+            exit(1)
+
         exit(0)
 
     except (requests.exceptions.RequestException):
