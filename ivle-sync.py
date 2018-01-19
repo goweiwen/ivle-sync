@@ -125,8 +125,8 @@ class IVLESession:
         modules = []
         for module in result["Results"]:
             modules.append(
-                Module(module["ID"], module["CourseName"], module[
-                    "CourseCode"]))
+                Module(module["ID"], module["CourseName"],
+                       module["CourseCode"]))
         return modules
 
     def get_workbin(self, module):
@@ -297,9 +297,7 @@ def main():
             help="Print out IVLE announcements")
 
         parser_l = subparsers.add_parser(
-            "logout",
-            aliases=['l'],
-            help="Logout and clear token")
+            "logout", aliases=['l'], help="Logout and clear token")
 
         args = parser.parse_args()
 
