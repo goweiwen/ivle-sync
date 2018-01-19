@@ -281,22 +281,25 @@ def main():
 
     try:
         parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers(help="Actions", dest='action')
 
-        parser.add_argument(
-            "-f",
-            "--files",
-            help="Sync IVLE files to the current directory",
-            action="store_true")
-        parser.add_argument(
-            "-a",
-            "--announcements",
-            help="Print out IVLE announcements",
-            action="store_true")
-        parser.add_argument(
-            "-l",
-            "--logout",
-            help="Logout and clear token",
-            action="store_true")
+        # parser_v = parser.add_argument("-v", "--verbose", help="Verbose mode")
+
+        parser_f = subparsers.add_parser(
+            "files",
+            aliases=['f'],
+            help="Sync IVLE files to the current directory")
+        # parser_f.add_argument("-d", "--directory", help="Store files in DIRECTORY")
+
+        parser_a = subparsers.add_parser(
+            "announcements",
+            aliases=['a'],
+            help="Print out IVLE announcements")
+
+        parser_l = subparsers.add_parser(
+            "logout",
+            aliases=['l'],
+            help="Logout and clear token")
 
         args = parser.parse_args()
 
@@ -304,13 +307,14 @@ def main():
             credentials['LAPI_KEY'] = get_lapi_key()
             write_credentials()
 
-        if args.files:
+        if args.action == "files" or args.action == "f":
+            # base_dir = args.directory
             session = IVLESession()
             sync_files(session)
-        elif args.announcements:
+        elif args.action == "announcements" or args.action == "a":
             session = IVLESession()
             sync_announcements(session)
-        elif args.logout:
+        elif args.action == "logout" or args.action == "l":
             clear_token()
 
         exit(0)
