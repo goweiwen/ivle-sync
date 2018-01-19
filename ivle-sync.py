@@ -198,9 +198,10 @@ def sync_announcements(session):
 
     for module in modules:
         print(module.code + ": " + module.name)
-        announcements = session.lapi(
-            "Announcements", {"CourseID": module.id,
-                              "Duration": DURATION})
+        announcements = session.lapi("Announcements", {
+            "CourseID": module.id,
+            "Duration": DURATION
+        })
         for announcement in announcements["Results"]:
             print("\n\n\n")
             print("=== " + announcement["Title"] + " ===")
@@ -281,9 +282,21 @@ def main():
     try:
         parser = argparse.ArgumentParser()
 
-        parser.add_argument("-f", "--files", help="Sync IVLE files to the current directory", action="store_true")
-        parser.add_argument("-a", "--announcements", help="Print out IVLE announcements", action="store_true")
-        parser.add_argument("-l", "--logout", help="Logout and clear token", action="store_true")
+        parser.add_argument(
+            "-f",
+            "--files",
+            help="Sync IVLE files to the current directory",
+            action="store_true")
+        parser.add_argument(
+            "-a",
+            "--announcements",
+            help="Print out IVLE announcements",
+            action="store_true")
+        parser.add_argument(
+            "-l",
+            "--logout",
+            help="Logout and clear token",
+            action="store_true")
 
         args = parser.parse_args()
 
