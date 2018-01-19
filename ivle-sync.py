@@ -7,6 +7,7 @@ from os.path import join, dirname, isfile, realpath
 import re
 import requests
 import json
+import argparse
 
 # Fill up ./credentials.json with your LAPI key
 # http://ivle.nus.edu.sg/LAPI/default.aspx
@@ -197,9 +198,10 @@ def sync_announcements(session):
 
     for module in modules:
         print(module.code + ": " + module.name)
-        announcements = session.lapi(
-            "Announcements", {"CourseID": module.id,
-                              "Duration": DURATION})
+        announcements = session.lapi("Announcements", {
+            "CourseID": module.id,
+            "Duration": DURATION
+        })
         for announcement in announcements["Results"]:
             print("\n\n\n")
             print("=== " + announcement["Title"] + " ===")
@@ -277,23 +279,41 @@ def ask_whether_write_credentials():
 
 def main():
 
-    if credentials['LAPI_KEY'] == '':
-        credentials['LAPI_KEY'] = get_lapi_key()
-        write_credentials()
-
     try:
-        if len(argv) > 1:
-            if argv[1] == "files" or argv[1] == "f":
-                session = IVLESession()
-                if session.token != '':
-                    sync_files(session)
-            elif argv[1] == "announcements" or argv[1] == "a":
-                session = IVLESession()
-                if session.token != '':
-                    sync_announcements(session)
-            elif argv[1] == "logout" or argv[1] == "l":
-                clear_token()
-            exit(1)
+        parser = argparse.ArgumentParser()
+
+        parser.add_argument(
+            "-f",
+            "--files",
+            help="Sync IVLE files to the current directory",
+            action="store_true")
+        parser.add_argument(
+            "-a",
+            "--announcements",
+            help="Print out IVLE announcements",
+            action="store_true")
+        parser.add_argument(
+            "-l",
+            "--logout",
+            help="Logout and clear token",
+            action="store_true")
+
+        args = parser.parse_args()
+
+        if credentials['LAPI_KEY'] == '':
+            credentials['LAPI_KEY'] = get_lapi_key()
+            write_credentials()
+
+        if args.files:
+            session = IVLESession()
+            sync_files(session)
+        elif args.announcements:
+            session = IVLESession()
+            sync_announcements(session)
+        elif args.logout:
+            clear_token()
+
+        exit(0)
 
     except (requests.exceptions.RequestException):
         print("Error: Connection refused.")
@@ -306,8 +326,6 @@ def main():
     except (SystemExit):
         print("Finished!")
         exit(0)
-
-    print("Usage: " + argv[0] + " [files|announcements|logout]")
 
 
 if __name__ == "__main__":
