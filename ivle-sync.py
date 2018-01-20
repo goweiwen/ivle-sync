@@ -276,9 +276,11 @@ def ask_whether_write_credentials():
         else:
             print("Please respond with 'yes' or 'no'")
 
+
 def print_finished_message():
     print("Finished!")
     exit(0)
+
 
 def parse_args():
     parser = argparse.ArgumentParser(usage="%(prog)s <action> [arguments]")
@@ -293,9 +295,7 @@ def parse_args():
     # parser_f.add_argument("-d", "--directory", help="Store files in DIRECTORY")
 
     parser_a = subparsers.add_parser(
-        "announcements",
-        aliases=['a'],
-        help="Print out IVLE announcements")
+        "announcements", aliases=['a'], help="Print out IVLE announcements")
 
     parser_l = subparsers.add_parser(
         "logout", aliases=['l'], help="Logout and clear token")
@@ -316,7 +316,7 @@ def parse_args():
     elif args.action == "logout" or args.action == "l":
         clear_token()
 
-    if len(argv) == 1:      # if given no arguments
+    if len(argv) == 1:  # if given no arguments
         parser.print_help()
         exit(1)
 
@@ -335,6 +335,6 @@ def main():
         print("Aborting...")
         exit(-1)
 
-        
+
 if __name__ == "__main__":
     main()
