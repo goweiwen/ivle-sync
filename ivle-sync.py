@@ -7,6 +7,7 @@ from os.path import join, dirname, isfile, realpath
 import re
 import requests
 import json
+import argparse
 
 # Fill up ./credentials.json with your LAPI key
 # http://ivle.nus.edu.sg/LAPI/default.aspx
@@ -124,8 +125,8 @@ class IVLESession:
         modules = []
         for module in result["Results"]:
             modules.append(
-                Module(module["ID"], module["CourseName"], module[
-                    "CourseCode"]))
+                Module(module["ID"], module["CourseName"],
+                       module["CourseCode"]))
         return modules
 
     def get_workbin(self, module):
@@ -197,9 +198,10 @@ def sync_announcements(session):
 
     for module in modules:
         print(module.code + ": " + module.name)
-        announcements = session.lapi(
-            "Announcements", {"CourseID": module.id,
-                              "Duration": DURATION})
+        announcements = session.lapi("Announcements", {
+            "CourseID": module.id,
+            "Duration": DURATION
+        })
         for announcement in announcements["Results"]:
             print("\n\n\n")
             print("=== " + announcement["Title"] + " ===")
@@ -275,25 +277,52 @@ def ask_whether_write_credentials():
             print("Please respond with 'yes' or 'no'")
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(usage="%(prog)s <action> [arguments]")
+    subparsers = parser.add_subparsers(title="Actions", dest='action')
+
+    # parser_v = parser.add_argument("-v", "--verbose", help="Verbose mode")
+
+    parser_f = subparsers.add_parser(
+        "files",
+        aliases=['f'],
+        help="Sync IVLE files to the current directory")
+    # parser_f.add_argument("-d", "--directory", help="Store files in DIRECTORY")
+
+    parser_a = subparsers.add_parser(
+        "announcements", aliases=['a'], help="Print out IVLE announcements")
+
+    parser_l = subparsers.add_parser(
+        "logout", aliases=['l'], help="Logout and clear token")
+
+    if len(argv) == 1:  # if given no arguments
+        parser.print_help()
+        exit(1)
+
+    return parser.parse_args()
+
+
 def main():
 
-    if credentials['LAPI_KEY'] == '':
-        credentials['LAPI_KEY'] = get_lapi_key()
-        write_credentials()
-
     try:
-        if len(argv) > 1:
-            if argv[1] == "files" or argv[1] == "f":
-                session = IVLESession()
-                if session.token != '':
-                    sync_files(session)
-            elif argv[1] == "announcements" or argv[1] == "a":
-                session = IVLESession()
-                if session.token != '':
-                    sync_announcements(session)
-            elif argv[1] == "logout" or argv[1] == "l":
-                clear_token()
-            exit(1)
+        args = parse_args()
+
+        if credentials['LAPI_KEY'] == '':
+            credentials['LAPI_KEY'] = get_lapi_key()
+            write_credentials()
+
+        if args.action == "files" or args.action == "f":
+            # base_dir = args.directory
+            session = IVLESession()
+            sync_files(session)
+        elif args.action == "announcements" or args.action == "a":
+            session = IVLESession()
+            sync_announcements(session)
+        elif args.action == "logout" or args.action == "l":
+            clear_token()
+
+        print("Finished!")
+        exit(0)
 
     except (requests.exceptions.RequestException):
         print("Error: Connection refused.")
@@ -302,12 +331,6 @@ def main():
     except (KeyboardInterrupt):
         print("Aborting...")
         exit(-1)
-
-    except (SystemExit):
-        print("Finished!")
-        exit(0)
-
-    print("Usage: " + argv[0] + " [files|announcements|logout]")
 
 
 if __name__ == "__main__":
