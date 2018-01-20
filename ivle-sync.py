@@ -21,8 +21,8 @@ USER_AGENT = "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko
 class Module:
     def __init__(self, moduleId, name, code):
         self.id = moduleId
-        self.name = name.replace('/', '-')
-        self.code = code
+        self.name = name
+        self.code = code.replace('/', '-')
 
 
 class WorkbinFolder:
