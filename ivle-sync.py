@@ -277,11 +277,6 @@ def ask_whether_write_credentials():
             print("Please respond with 'yes' or 'no'")
 
 
-def print_finished_message():
-    print("Finished!")
-    exit(0)
-
-
 def parse_args():
     parser = argparse.ArgumentParser(usage="%(prog)s <action> [arguments]")
     subparsers = parser.add_subparsers(title="Actions", dest='action')
@@ -300,32 +295,34 @@ def parse_args():
     parser_l = subparsers.add_parser(
         "logout", aliases=['l'], help="Logout and clear token")
 
-    args = parser.parse_args()
-
-    if credentials['LAPI_KEY'] == '':
-        credentials['LAPI_KEY'] = get_lapi_key()
-        write_credentials()
-
-    if args.action == "files" or args.action == "f":
-        # base_dir = args.directory
-        session = IVLESession()
-        sync_files(session)
-    elif args.action == "announcements" or args.action == "a":
-        session = IVLESession()
-        sync_announcements(session)
-    elif args.action == "logout" or args.action == "l":
-        clear_token()
-
     if len(argv) == 1:  # if given no arguments
         parser.print_help()
         exit(1)
+
+    return parser.parse_args()
 
 
 def main():
 
     try:
-        parse_args()
-        print_finished_message()
+        args = parse_args()
+
+        if credentials['LAPI_KEY'] == '':
+            credentials['LAPI_KEY'] = get_lapi_key()
+            write_credentials()
+
+        if args.action == "files" or args.action == "f":
+            # base_dir = args.directory
+            session = IVLESession()
+            sync_files(session)
+        elif args.action == "announcements" or args.action == "a":
+            session = IVLESession()
+            sync_announcements(session)
+        elif args.action == "logout" or args.action == "l":
+            clear_token()
+
+        print("Finished!")
+        exit(0)
 
     except (requests.exceptions.RequestException):
         print("Error: Connection refused.")
