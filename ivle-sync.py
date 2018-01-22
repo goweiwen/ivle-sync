@@ -256,31 +256,12 @@ class IVLESession:
             stream=True,
             params=params)
 
-        done = False
         try:
-            total = int(r.headers.get('Content-Length', 0)) // (1024)
             with open(file.path, 'wb') as f:
-                for chunk in tqdm(
-                        r.iter_content(1024),
-                        total=total,
-                        miniters=1,
-                        bar_format="{desc}{"
-                        "percentage:3.0f}%"
-                        " {rate_fmt}"
-                        " Elapsed: {"
-                        "elapsed}"
-                        " Remaining: {"
-                        "remaining}",
-                        unit='kB',
-                        unit_divisor=1024,
-                        unit_scale=True):
+                for chunk in r.iter_content(1024):
                     f.write(chunk)
-            done = True
-        except Exception:
-            pass
-        finally:
-            if not done:
-                remove(file.path)
+        except:
+            remove(file.path)
 
     def download_folder(self, target_folder):
         for folder in target_folder.folders:
