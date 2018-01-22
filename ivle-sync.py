@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 from bs4 import BeautifulSoup
 from getpass import getpass
-from os import makedirs
+from os import makedirs, remove
 from sys import argv, exit
 from os.path import join, dirname, isfile, realpath
 import re
@@ -125,8 +125,8 @@ class IVLESession:
         modules = []
         for module in result["Results"]:
             modules.append(
-                Module(module["ID"], module["CourseName"], module[
-                    "CourseCode"]))
+                Module(module["ID"], module["CourseName"],
+                       module["CourseCode"]))
         return modules
 
     def get_workbin(self, module):
@@ -170,7 +170,7 @@ class IVLESession:
                 for chunk in r.iter_content(1024):
                     f.write(chunk)
         except:
-            os.remove(file.path)
+            remove(file.path)
 
     def download_folder(self, target_folder):
         for folder in target_folder.folders:
@@ -224,7 +224,8 @@ def get_credentials():
     if password == '':
         password = getpass("Password: ")
 
-    if ask_whether_write_credentials():
+    if (credentials['USERID'] == '' or
+            credentials['PASSWORD'] == '') and ask_whether_write_credentials():
         credentials['USERID'] = userid
         credentials['PASSWORD'] = password
         write_credentials()
