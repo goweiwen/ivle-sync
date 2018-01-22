@@ -73,7 +73,7 @@ class IVLESession:
 
         self.token = self.get_token()
         if self.token == '':
-            print("Login fail, please check your userid and password")
+            print("Login failed, please check your NUSNET UserID and password")
 
     def get_token(self):
         try:
@@ -125,8 +125,8 @@ class IVLESession:
         modules = []
         for module in result["Results"]:
             modules.append(
-                Module(module["ID"], module["CourseName"],
-                       module["CourseCode"]))
+                Module(module["ID"], module["CourseName"], module[
+                    "CourseCode"]))
         return modules
 
     def get_workbin(self, module):
@@ -159,7 +159,7 @@ class IVLESession:
             # print("Skipping " + file.path + ".")
             return
 
-        print("Downloading " + file.path + ".")
+        print("Downloading " + file.path)
         r = self.s.get(
             "https://ivle.nus.edu.sg/api/downloadfile.ashx",
             stream=True,
@@ -184,7 +184,8 @@ def sync_files(session):
     modules = session.get_modules()
 
     for module in modules:
-        print(module.code + ": " + module.name)
+        print("=== " + module.code + ": " + module.name + " ===")
+
         folders = session.get_workbin(module)
         for folder in folders:
             session.download_folder(folder)
@@ -197,25 +198,27 @@ def sync_announcements(session):
     DURATION = 60 * 24 * 5
 
     for module in modules:
-        print(module.code + ": " + module.name)
+        print("=== " + module.code + ": " + module.name + " ===")
+
         announcements = session.lapi("Announcements", {
             "CourseID": module.id,
             "Duration": DURATION
         })
         for announcement in announcements["Results"]:
-            print("\n\n\n")
-            print("=== " + announcement["Title"] + " ===")
+            print("== " + announcement["Title"] + " ==")
+
             description = BeautifulSoup(announcement["Description"],
                                         "html.parser").get_text()
             description = re.sub(r'\n\s*\n', '\n', description)
             print(description)
+            print()
         print()
 
 
 def get_credentials():
     userid = credentials['USERID']
     if userid == '':
-        userid = input("UserID: ")
+        userid = input("NUSNET UserID: ")
 
     password = credentials['PASSWORD']
     if password == '':
@@ -242,10 +245,10 @@ def clear_token():
     try:
         del credentials['TOKEN']
         write_credentials()
-        print("Token cleared.")
+        print("Logged out.")
     except:
-        print("No token is set.")
-        exit(-1)
+        print("Not logged in.")
+        exit(1)
 
 
 def write_credentials():
@@ -258,7 +261,7 @@ def write_credentials():
 
     except:
         print("Error writing to credentials.json")
-        exit(-1)
+        exit(1)
 
 
 def ask_whether_write_credentials():
@@ -267,7 +270,7 @@ def ask_whether_write_credentials():
 
     while True:
         choice = input(
-            "Do you want to write the token obtained to credentials.json?[y/N] "
+            "Do you want us to remember your NUSNET UserID and password? [y/N] "
         ).lower()
         if choice in yes:
             return True
@@ -326,11 +329,11 @@ def main():
 
     except (requests.exceptions.RequestException):
         print("Error: Connection refused.")
-        exit(-1)
+        exit(1)
 
     except (KeyboardInterrupt):
         print("Aborting...")
-        exit(-1)
+        exit(1)
 
 
 if __name__ == "__main__":
