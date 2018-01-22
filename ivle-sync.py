@@ -79,13 +79,11 @@ class IVLESession:
         self.s = requests.Session()
         self.s.headers.update({"User-Agent": USER_AGENT})
 
-        self.token = self.get_token()
-        if self.token == '':
-            print("Login failed, please check your NUSNET UserID and password")
+        self.token = ''
+        self.panopto_token = ''
 
     def get_token(self):
         try:
-            self.token = ""
             r = self.lapi("Validate", {"Token": credentials['TOKEN']})
             if not r['Success']:
                 clear_token()
@@ -94,7 +92,8 @@ class IVLESession:
             if r['Token'] != credentials['TOKEN']:
                 credentials['TOKEN'] = r['Token']
                 write_credentials()
-            return r['Token']
+            self.token = r['Token']
+            return True
 
         except KeyError:
             return self.get_new_token()
@@ -120,12 +119,45 @@ class IVLESession:
                         credentials['LAPI_KEY'], data)
 
         if len(r.text) > 1000:  # hacky way to check if return is a HTML page
-            return ''
+            print("Login failed, please check your NUSNET UserID and password")
+            return False
 
-        credentials['TOKEN'] = r.text
+        self.token = r.text
+        credentials['TOKEN'] = self.token
         write_credentials()
+        return True
 
-        return r.text
+    def get_panopto_token(self):
+        r = self.s.get(
+            "https://fac.weblecture.nus.edu.sg/Panopto/Pages/Auth/Login.aspx?instance=nus&AllowBounce=true"
+        )
+        soup = BeautifulSoup(r.content, "html.parser")
+
+        VIEWSTATE = soup.find(id="__VIEWSTATE")['value']
+        VIEWSTATEGENERATOR = soup.find(id="__VIEWSTATEGENERATOR")['value']
+
+        userid, password = get_credentials()
+
+        data = {
+            "__EVENTTARGET": "ctl00$ctl00$ContentPlaceHolder1$btnSignIn",
+            "__VIEWSTATE": VIEWSTATE,
+            "__VIEWSTATEGENERATOR": VIEWSTATEGENERATOR,
+            "ctl00$ctl00$ContentPlaceHolder1$userid": userid,
+            "ctl00$ctl00$ContentPlaceHolder1$password": password
+        }
+
+        r = self.s.post(r.url, data, cookies=r.history[1].cookies)
+
+        try:
+            self.panopto_token = r.history[2].cookies['.ASPXAUTH']
+        except KeyError:
+            return False
+
+        # # We don't write the token to JSON as we haven't implemented verification
+        # credentials['PANOPOTO_TOKEN'] = self.panopto_token
+        # write_credentials()
+
+        return True
 
     def get_modules(self):
         result = self.lapi("Modules")
@@ -165,14 +197,11 @@ class IVLESession:
             params=params).json()
 
     def download_webcast(self, webcast):
-        # This link redirects to IVLE, prompting for login
-        # "https://fac.weblecture.nus.edu.sg/Panopto/Pages/Auth/Login.aspx?ReturnUrl=https%3A%2F%2Ffac.weblecture.nus.edu.sg%2FPanopto%2FPages%2FHome.aspx&instance=nus&AllowBounce=true"
-
         cookies = {
-            '.ASPXAUTH': ''
+            '.ASPXAUTH': self.panopto_token
         }
 
-        print("Downloading " + webcast.module.code + "/" + webcast.title + ".")
+        print("Downloading " + webcast.module.code + "/" + webcast.title + ".mp4")
         r = self.s.get(webcast.url, stream=True, cookies=cookies)
 
         path = join(webcast.module.code, "Webcasts", webcast.title + ".mp4")
@@ -206,7 +235,7 @@ class IVLESession:
             pass
         finally:
             if not done:
-                remove(title)
+                remove(path)
 
     def download_file(self, file):
         params = {
@@ -411,13 +440,16 @@ def main():
         if args.action == "files" or args.action == "f":
             # base_dir = args.directory
             session = IVLESession()
-            sync_files(session)
+            if session.get_token():
+                sync_files(session)
         elif args.action == "announcements" or args.action == "a":
             session = IVLESession()
-            sync_announcements(session)
+            if session.get_token():
+                sync_announcements(session)
         elif args.action == "webcasts" or args.action == "w":
             session = IVLESession()
-            sync_webcasts(session)
+            if session.get_token() and session.get_panopto_token():
+                sync_webcasts(session)
         elif args.action == "logout" or args.action == "l":
             clear_token()
 
