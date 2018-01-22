@@ -201,7 +201,6 @@ class IVLESession:
             '.ASPXAUTH': self.panopto_token
         }
 
-        print("Downloading " + webcast.module.code + "/" + webcast.title + ".mp4")
         r = self.s.get(webcast.url, stream=True, cookies=cookies)
 
         path = join(webcast.module.code, "Webcasts", webcast.title + ".mp4")
@@ -210,6 +209,8 @@ class IVLESession:
 
         if isfile(path):
             return
+
+        print("Downloading " + webcast.module.code + "/" + webcast.title + ".mp4")
 
         done = False
         try:
@@ -226,9 +227,7 @@ class IVLESession:
                         "elapsed}"
                         " Remaining: {"
                         "remaining}",
-                        unit='kB',
-                        unit_divisor=1024,
-                        unit_scale=True):
+                        unit='kB'):
                     f.write(chunk)
             done = True
         except Exception:
@@ -310,9 +309,12 @@ def sync_webcasts(session):
     modules = session.get_modules()
 
     for module in modules:
+        print("=== " + module.code + ": " + module.name + " ===")
+
         webcasts = session.get_webcasts(module)
         for webcast in webcasts:
             session.download_webcast(webcast)
+        print()
 
 
 def get_credentials():
