@@ -197,11 +197,7 @@ class IVLESession:
             params=params).json()
 
     def download_webcast(self, webcast):
-        cookies = {
-            '.ASPXAUTH': self.panopto_token
-        }
-
-        r = self.s.get(webcast.url, stream=True, cookies=cookies)
+        cookies = {'.ASPXAUTH': self.panopto_token}
 
         path = join(webcast.module.code, "Webcasts", webcast.title + ".mp4")
 
@@ -210,9 +206,12 @@ class IVLESession:
         if isfile(path):
             return
 
-        print("Downloading " + webcast.module.code + "/" + webcast.title + ".mp4")
+        if not prompt("Download " + webcast.module.code + "/" + webcast.title +
+                      ".mp4? [y/N] ", 'n'):
+            return
 
-        done = False
+        r = self.s.get(webcast.url, stream=True, cookies=cookies)
+
         try:
             total = int(r.headers.get('Content-Length', 0)) // (1024)
             with open(path, 'wb') as f:
@@ -229,12 +228,8 @@ class IVLESession:
                         "remaining}",
                         unit='kB'):
                     f.write(chunk)
-            done = True
-        except Exception:
-            pass
-        finally:
-            if not done:
-                remove(path)
+        except:
+            remove(path)
 
     def download_file(self, file):
         params = {
@@ -326,8 +321,10 @@ def get_credentials():
     if password == '':
         password = getpass("Password: ")
 
-    if (credentials['USERID'] == '' or
-            credentials['PASSWORD'] == '') and ask_whether_write_credentials():
+    if (credentials['USERID'] == '' or credentials['PASSWORD'] == ''
+        ) and prompt(
+            "Do you want us to remember your NUSNET UserID and password? [y/N]",
+            'n'):
         credentials['USERID'] = userid
         credentials['PASSWORD'] = password
         write_credentials()
@@ -367,17 +364,12 @@ def write_credentials():
         exit(1)
 
 
-def ask_whether_write_credentials():
-    yes = set(['yes', 'y'])
-    no = set(['no', 'n', ''])
-
+def prompt(query, default):
     while True:
-        choice = input(
-            "Do you want us to remember your NUSNET UserID and password? [y/N] "
-        ).lower()
-        if choice in yes:
+        choice = input(query).lower() or default
+        if choice in ['yes', 'y']:
             return True
-        elif choice in no:
+        elif choice in ['no', 'n']:
             return False
         else:
             print("Please respond with 'yes' or 'no'")
@@ -399,7 +391,9 @@ def parse_args():
         "announcements", aliases=['a'], help="Print out IVLE announcements")
 
     parser_w = subparsers.add_parser(
-        "webcasts", aliases=['w'], help="Sync Panopto web lectures to the current directory")
+        "webcasts",
+        aliases=['w'],
+        help="Sync Panopto web lectures to the current directory")
 
     parser_l = subparsers.add_parser(
         "logout", aliases=['l'], help="Logout and clear token")
